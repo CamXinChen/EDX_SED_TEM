@@ -1,0 +1,70 @@
+cff-version: 1.2.0
+message: "If you use these notebooks, please cite the associated paper below."
+title: "EDX_SED_TEM: STEM-EDX and scanning electron diffraction analysis notebooks"
+type: software
+authors:
+  - family-names: Chen
+    given-names: Xin
+repository-code: "https://github.com/CamXinChen/EDX_SED_TEM"
+url: "https://github.com/CamXinChen/EDX_SED_TEM"
+license: MIT
+keywords:
+  - STEM-EDX
+  - 4D-STEM
+  - scanning electron diffraction
+  - pyxem
+  - HyperSpy
+  - perovskite solar cells
+  - electron microscopy
+preferred-citation:
+  type: article
+  title: "Stabilizing perovskite solar cells via facet-selective molecular engineering"
+  authors:
+    - family-names: Pan
+      given-names: Yi
+    - family-names: Chen
+      given-names: Xin
+    - family-names: Zhang
+      given-names: Zeyu
+    - family-names: Ou
+      given-names: Zeping
+    - family-names: Zhao
+      given-names: Ke
+    - family-names: Zhang
+      given-names: Bo
+    - family-names: Chen
+      given-names: Kun
+    - family-names: Ouedraogo
+      given-names: Nabonswende Aida Nadege
+    - family-names: Su
+      given-names: Zhenhuang
+    - family-names: He
+      given-names: Bingchen
+    - family-names: Ho
+      given-names: Cheuk Hin
+    - family-names: Chen
+      given-names: Shanshan
+    - family-names: Zheng
+      given-names: Yujie
+    - family-names: Jiang
+      given-names: Tingming
+    - family-names: Qin
+      given-names: Jianqiang
+    - family-names: Du
+      given-names: Juan
+    - family-names: Gao
+      given-names: Xingyu
+    - family-names: Wang
+      given-names: Rui
+    - family-names: Ducati
+      given-names: Caterina
+    - family-names: Liao
+      given-names: Qiang
+    - family-names: Sun
+      given-names: Kuan
+  journal: Joule
+  volume: 10
+  issue: 4
+  year: 2026
+  doi: "10.1016/j.joule.2025.102315"
+  url: "https://doi.org/10.1016/j.joule.2025.102315"

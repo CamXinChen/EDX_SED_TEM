@@ -1,0 +1,12 @@
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Experimental microscopy data are intentionally excluded.
+data/*
+!data/README.md
+
+# Generated analysis products are local.
+outputs/*
+!outputs/README.md
