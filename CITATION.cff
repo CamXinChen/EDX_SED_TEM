@@ -7,7 +7,12 @@ authors:
     given-names: Xin
 repository-code: "https://github.com/CamXinChen/EDX_SED_TEM"
 url: "https://github.com/CamXinChen/EDX_SED_TEM"
-license: MIT
+# Dual-licensed: notebooks 01-03 and the documentation are MIT; notebook 04
+# (04_sigma_sed_vae_segmentation.ipynb) derives from GPLv3 SIGMA-SED code and
+# is GPL-3.0-or-later. The repository as a whole is not MIT-reusable.
+license:
+  - MIT
+  - GPL-3.0-or-later
 keywords:
   - STEM-EDX
   - 4D-STEM

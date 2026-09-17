@@ -1,6 +1,6 @@
 # EDX and 4D-STEM Analysis of Facet-Engineered Perovskite Films
 
-This repository contains three compact, expert-facing Jupyter workflows for
+This repository contains four compact, expert-facing Jupyter workflows for
 analysing electron microscopy data from facet-engineered FAPbI₃ perovskite
 solar-cell films:
 
@@ -8,6 +8,8 @@ solar-cell films:
 2. reciprocal-space calibration of SED/4D-STEM data using an Au–Pd standard
 3. SED preprocessing, lightweight K-means segmentation and phase/orientation
    indexing
+4. SIGMA-SED variational-autoencoder representation learning with Bayesian
+   Gaussian-mixture segmentation of diffraction patterns
 
 The notebooks document the analytical workflow developed for:
 
@@ -64,14 +66,24 @@ Experimental SED / 4D-STEM scan
                         ├── K-means clustering
                         │       └── representative cluster diffraction patterns
                         │
-                        └── simulated-template matching
-                                └── phase, orientation and zone-axis maps
+                        ├── simulated-template matching
+                        │       └── phase, orientation and zone-axis maps
+                        │
+                        └── SIGMA-SED VAE + Bayesian mixture
+                                └── latent cluster map and mean diffraction
+                                    patterns
 ```
 
-The K-means route included here is a lightweight, accessible segmentation
-method for relatively simple datasets. It is separate from **SIGMA**, the more
-advanced unsupervised machine-learning pipeline developed for high-throughput
-4D-STEM phase/orientation analysis.
+The K-means route in notebook 02 is a lightweight, accessible segmentation
+method for relatively simple datasets. It is an alternative clustering route
+and does **not** belong to **SIGMA**, the more advanced unsupervised
+machine-learning pipeline developed for high-throughput 4D-STEM
+phase/orientation analysis.
+
+Notebook 04 is the SIGMA route. It applies SIGMA-SED representation learning
+and Bayesian mixture segmentation to the same denoised diffraction signal that
+notebook 02 produces, so the two clustering routes can be compared on
+identical input. It runs in its own environment and under its own licence.
 
 ## Repository contents
 
@@ -80,9 +92,11 @@ advanced unsupervised machine-learning pipeline developed for high-throughput
 | `notebooks/01_au_pd_reciprocal_calibration.ipynb` | Calibrate SED reciprocal space from an Au–Pd standard using py4DSTEM | Reciprocal-space pixel scale, diffraction-origin correction and elliptical-distortion parameters |
 | `notebooks/02_sed_phase_orientation_mapping.ipynb` | Preprocess perovskite SED data, segment it with K-means and match experimental patterns against simulated crystallographic templates | Cluster-average diffraction patterns, α/δ phase assignments, orientation/IPF maps and zone-axis estimates |
 | `notebooks/03_edx_composition.ipynb` | Process STEM-EDX spectrum images and estimate spatial chemical composition | Elemental intensity and composition maps |
+| `notebooks/04_sigma_sed_vae_segmentation.ipynb` | Learn a latent representation of preprocessed SED patterns with a SIGMA-SED variational autoencoder and segment it with a Bayesian Gaussian mixture | Cluster map, per-cluster mean diffraction patterns and radial profiles, optional label/latent export |
 
-All three notebooks are cleaned, output-free public versions of the working
-analysis notebooks.
+All four notebooks are cleaned, output-free public versions of the working
+analysis notebooks. Notebook 04 is licensed under GPLv3 rather than MIT; see
+[License](#license).
 
 ### 1. Au–Pd reciprocal-space calibration
 
@@ -158,6 +172,55 @@ plot/factors/loadings and the relevant detector calibration before reuse.
 Ratio-map pixels remain `NaN` where either signal falls below its declared
 threshold, avoiding artificial ratios from weak denominators.
 
+### 4. SIGMA-SED VAE and Bayesian-mixture segmentation
+
+The SIGMA route to diffraction-pattern segmentation, kept deliberately close
+to the upstream SIGMA-SED interfaces. It continues from notebook 02's denoised
+signal, so it is an alternative to that notebook's K-means step rather than a
+separate analysis:
+
+1. loads an already centred, preprocessed and normalized SED signal of shape
+   `(scan_y, scan_x, detector_y, detector_x)` through SIGMA-SED's `SEDDataset`,
+   which also computes azimuthally integrated radial profiles;
+2. validates the input (square detector, size divisible by 8, finite
+   intensities already scaled to [0, 1] for the VAE's sigmoid decoder);
+3. trains a convolutional variational autoencoder
+   (`VariationalAutoEncoder2D`) on the full 2D patterns, or loads a
+   compatible checkpoint instead;
+4. encodes the scan to latent means in scan order, with a bounded inference
+   batch size;
+5. fits a Bayesian Gaussian mixture in the full latent space via
+   `PixelSegmenter`, treating the component count as an upper bound rather
+   than a phase count;
+6. displays a PCA projection of the latent space alongside the cluster map;
+   and
+7. saves three-panel diagnostics per occupied cluster (membership
+   probability, mean diffraction pattern, mean radial profile), with an
+   optional export of labels, latent means, cluster counts and mean patterns.
+
+This notebook is a **method template, not an executed demonstration**. Three
+of its requirements differ from the other notebooks:
+
+- **Separate environment.** It needs the SIGMA-SED fork and a legacy
+  dependency set (Python 3.10, PyTorch 2.0.1, HyperSpy 1.7.5, pyxem 0.16);
+  see [Environment](#environment). Because that environment differs from the
+  one notebooks 01–03 use, save notebook 02's denoised signal to `data/` and
+  reopen it here rather than passing it between notebooks in memory.
+- **Input from notebook 02.** It starts from the centred, denoised signal
+  produced by notebook 02's `subtract_diffraction_background` step, scaled to
+  [0, 1] for the VAE's sigmoid decoder. The notebook validates that range,
+  the square detector and the divisible-by-8 side length on load.
+- **No calibration values.** Accelerating voltage and optional plotting
+  calibration are left unset and must be supplied; `None` marks a redacted or
+  unset value, not a physical zero.
+- **Separate outputs.** Each run creates a fresh directory under
+  `outputs/sigma_sed/`, holding model checkpoints, PNG diagnostics and any
+  optional export.
+- **Different licence.** GPLv3, not MIT; see [License](#license).
+
+Clusters describe diffraction similarity only. Assigning phase or orientation
+requires the crystallographic validation that notebook 02 performs.
+
 ## Design principles
 
 These notebooks are released as concise method references for readers already
@@ -202,7 +265,9 @@ Data availability associated with the publication: **to be added**.
 
 ## Environment
 
-The notebooks target the current
+### Notebooks 01–03
+
+These three notebooks target the current
 [HyperSpy](https://github.com/hyperspy/hyperspy) and
 [pyxem](https://github.com/pyxem/pyxem) ecosystem:
 
@@ -238,17 +303,17 @@ python -m pip install \
 jupyter lab
 ```
 
-The Au–Pd notebook currently requests CUDA-accelerated Bragg-disk detection.
-CuPy is therefore optional for general inspection but required to run that
-cell unchanged on an NVIDIA CUDA system. Install the CuPy build appropriate
-for the local CUDA toolchain, or disable the notebook's `CUDA` and
-`CUDA_batched` options for CPU execution.
+CuPy is optional. The Au–Pd notebook requests GPU Bragg-disk detection via
+`REQUEST_GPU = True`, but its `detect_cuda()` helper returns `False` whenever
+CuPy is missing or no CUDA device is present, and py4DSTEM then runs the same
+disk search on the CPU. No cell needs editing to run without a GPU; set
+`REQUEST_GPU = False` to skip detection altogether. To use a GPU, install the
+CuPy build matching the local CUDA toolchain.
 
 The commands above install the latest mutually compatible releases available
-from the selected package channel. Once the notebooks have been consolidated
-and tested, the exact working versions will be recorded in `environment.yml`
-for reproducibility. Users should prefer that file over installing unpinned
-latest releases when reproducing this repository.
+from the selected package channel. This repository does not yet pin exact
+versions; each notebook records its main library versions at runtime, so note
+those values alongside any results you intend to reproduce.
 
 Official installation guidance:
 
@@ -256,6 +321,36 @@ Official installation guidance:
 - [pyxem installation](https://pyxem.readthedocs.io/en/stable/user_guide/installing.html)
 - [eXSpy installation](https://hyperspy.org/exspy/user_guide/install.html)
 - [py4DSTEM installation](https://py4dstem.readthedocs.io/en/latest/installation.html)
+
+### Notebook 04 (separate environment)
+
+Notebook 04 will **not** run in the environment above. It requires the
+[SIGMA-SED fork](https://github.com/CheukHinHoJerry/sigma-sed) of
+[SIGMA](https://github.com/poyentung/sigma) — specifically `SEDDataset`,
+`VariationalAutoEncoder2D`, `Experiment` and `PixelSegmenter`. Installing the
+base `emsigma` distribution alone may not provide these SED extensions.
+
+The source checkout inspected for this notebook specifies Python ≥3.10,
+PyTorch 2.0.1, HyperSpy 1.7.5, pyxem 0.16, NumPy 1.24.4 and scikit-learn
+1.3.0. Use a dedicated Python 3.10 environment for this legacy fork;
+compatibility with the current HyperSpy/pyxem releases has not been
+established.
+
+```bash
+conda create -n sigma-sed python=3.10
+conda activate sigma-sed
+git clone https://github.com/CheukHinHoJerry/sigma-sed.git
+cd sigma-sed
+python -m pip install .
+python -m pip check
+jupyter lab
+```
+
+Use a fork revision that provides all four interfaces above, and record the
+revision and installed versions for each run. These instructions follow the
+supplied checkout's README; they are not a newly tested dependency lock.
+`Experiment` selects CUDA when available and otherwise uses CPU, so training
+runs without a GPU, only more slowly.
 
 ## Scope and limitations
 
@@ -272,6 +367,12 @@ Official installation guidance:
 - The K-means segmentation is intended as a lightweight exploratory tool; its
   clusters should not be interpreted as crystallographic phases without
   physics-based validation.
+- The same caution applies to the notebook 04 VAE/mixture segmentation: its
+  clusters describe diffraction similarity, its mixture membership
+  probabilities are not calibrated phase confidences, and its component count
+  is an upper bound rather than a phase count. Its training, mixture and
+  plotting settings are editable starting points that have not been validated
+  for another dataset.
 - The absence of raw data means the complete published analysis cannot be
   reproduced from this repository alone.
 
@@ -293,6 +394,18 @@ record. GitHub uses this file to display a **Cite this repository** option.
 
 ## License
 
-The notebooks and repository documentation are released under the
-[MIT License](LICENSE). Third-party libraries retain their respective
-licences.
+This repository is released under two licences.
+
+- **MIT** — notebooks 01–03, the repository documentation and everything else
+  not listed below. See [`LICENSE`](LICENSE).
+- **GPL-3.0-or-later** — `notebooks/04_sigma_sed_vae_segmentation.ipynb` only.
+  It derives from the SIGMA-SED fork of SIGMA, which is distributed under the
+  GNU General Public License v3.0, so it inherits those terms. See
+  [`notebooks/LICENSE_04_sigma_sed.txt`](notebooks/LICENSE_04_sigma_sed.txt).
+
+Notebook 04 is therefore **not** MIT-reusable: redistributing it, or a work
+derived from it, requires compliance with GPLv3, including making the
+corresponding source available under the same terms. If you need MIT-licensed
+material only, use notebooks 01–03.
+
+Third-party libraries retain their respective licences.
